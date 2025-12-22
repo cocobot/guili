@@ -1,72 +1,70 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="drawing" viewBox="-1700 -1200 3400 2400">
-  <defs id="defs">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="drawing" viewBox="-1050 0 3100 2100">
+  <defs>
     <style type="text/css"><![CDATA[
-
-      #table-border {
-        fill: black;
-        stroke: none;
-      }
-
-      .beacon-support {
-        fill: black;
-        stroke: none;
-      }
-
-      .table-marker {
-        stroke: #888;
-        stroke-width: 2;
-        z-index: -10;
-      }
-
-      .beacon {
-        stroke: white;
-        stroke-width: 2;
-      }
-      .beacon-fov {
-        fill: none;
+      .default-robot { fill: #00ff00; }
+      #def-default-robot polygon {
         stroke: black;
-        stroke-width: 5;
-        opacity: 50%;
+        stroke-width: 10;
       }
-
-      .reflector {
+      #def-default-robot rect {
         stroke: black;
         stroke-width: 5;
       }
 
-      ]]></style>
+      .galipeur { fill: #00ffff; }
+      #def-galipeur .perimeter {
+        stroke: black;
+        stroke-width: 10;
+      }
+      #def-galipeur .balleater, #def-galipeur .turbine {
+        stroke: black;
+        stroke-width: 5;
+      }
+      #def-galipeur .balleater { fill: #dd00dd; }
+      #def-galipeur .turbine { fill: #00dd00; }
 
-    <rect id="beacon-support" class="beacon-support" width="80" height="80" transform="translate(-40,-40)" />
+      #def-carrot circle {
+        stroke: black;
+        stroke-width: 10;
+      }
 
-    <circle id="beacon" class="beacon" r="35" />
-    <circle id="reflector" class="reflector" r="30" />
+      .graph-vertex {
+        stroke-width: 6;
+        stroke: #808080;
+      }
 
-    <clipPath id="clip-table">
-      <path d="M -1500,-1000 L 1500,-1000 L 1500,1000 L -1500,1000 Z" />
-    </clipPath>
+      .graph-node {
+        stroke: none;
+        stroke-width: 6;
+        fill: #808080;
+      }
 
+      .graph-node.active { fill: red; }
+      .graph-node.active.start { fill: yellow; stroke: red; }
+      .graph-node.active.goal { fill: #00ff00; stroke: red; }
+      .graph-vertex.active { stroke: red; }
+    ]]></style>
+
+    <!-- robots -->
+
+    <g id="def-default-robot">
+      <polygon points="0,170 147,-85 -147,-85" />
+      <rect x="-80" y="-95" width="160" height="50" />
+    </g>
+    <g id="def-galipeur" transform="scale(0.9)">
+      <g class="perimeter">
+        <polygon points="-21.250000,156.606261 21.250000,156.606261 146.250000,-59.900090 125.000000,-96.706170 -125.000000,-96.706170 -146.250000,-59.900090" />
+      </g>
+    </g>
+    <g id="def-carrot">
+      <circle r="40" />
+    </g>
   </defs>
 
-  <g id="table">
-    <path id="table-border" fill-rule="evenodd" d="
-      M -1500,-1000 L 1500,-1000 L 1500,1000 L -1500,1000 Z
-      M -1522,-1022 L 1522,-1022 L 1522,1022 L -1522,1022 Z
-      " />
-
-    <use xlink:href="#beacon-support" x="-1562" y="-1062" />
-    <use xlink:href="#beacon-support" x="-1562" y="0" />
-    <use xlink:href="#beacon-support" x="-1562" y="1062" />
-    <use xlink:href="#beacon-support" x="1562" y="-1062" />
-    <use xlink:href="#beacon-support" x="1562" y="0" />
-    <use xlink:href="#beacon-support" x="1562" y="1062" />
-
-    <line class="table-marker" x1="0" y1="-1000" x2="0" y2="1000" />
-    <line class="table-marker" x1="-1500" y1="0" x2="1500" y2="0" />
-
+  <g id="table" transform="translate(-1050,0)">
+    <image x="50" y="50" width="3000" height="2000" href="field2026.svg" /> 
   </g>
-
-  <g id="fovs" clip-path="url(#clip-table)">
-  </g>
+  <g id="reference-frame"/>
 
   <script type="text/javascript"><![CDATA[
     const xlinkNS = "http://www.w3.org/1999/xlink";
@@ -93,7 +91,5 @@
     function distance(a,b) {
       return Math.sqrt( (a.x-b.x)*(a.x-b.x) + (a.y-b.y)*(a.y-b.y) );
     }
-
   ]]></script>
-
 </svg>
