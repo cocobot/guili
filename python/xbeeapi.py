@@ -6,23 +6,21 @@ import itertools
 
 api_id_to_cls = {}
 
-class XBeeAPIPacketMeta(type):
-    def __new__(mcls, name, bases, fields):
-        tcls = type.__new__(mcls, name, bases, fields)
-        aid = fields.get('api_id')
-        if aid is not None:
-            if aid in api_id_to_cls:
-                raise ValueError("packet with API ID %r already defined" % aid)
-            assert len(aid) == 1
-            api_id_to_cls[aid[0]] = tcls
-        return tcls
-
-class XBeeAPIPacket(metaclass=XBeeAPIPacketMeta):
+class XBeeAPIPacket:
 
     START_BYTE = b'\x7e'
 
     packet_maximum_size = 500
     api_id = None  # to be defined in subclasses
+
+    def __init_subclass__(cls, /, **kwargs):
+        super().__init_subclass__(**kwargs)
+        aid = fields.get('api_id')
+        if aid is not None:
+            if aid in api_id_to_cls:
+                raise ValueError(f"packet with API ID {aid!r} already defined")
+            assert len(aid) == 1
+            api_id_to_cls[aid[0]] = tcls
 
     def pack(self):
         """Return the formatted packet data"""
@@ -120,21 +118,21 @@ class XBeeAPIPacket(metaclass=XBeeAPIPacketMeta):
     @staticmethod
     def checksum(payload):
         """Compute XBee API checksum on payload"""
-        return sum( c for c in payload ) % 256
+        return sum(payload) % 256
 
 
 class XBeeAPIPacketStatus(XBeeAPIPacket):
     api_id = b'\x8a'
 
     status_values = {
-            0: 'HRESET',
-            1: 'WATCHDOG',
-            2: 'ASSOC',
-            3: 'DISASSOC',
-            4: 'SYNCLOST',
-            5: 'COORDREALIGNED',
-            6: 'COORDSTART',
-            }
+        0: 'HRESET',
+        1: 'WATCHDOG',
+        2: 'ASSOC',
+        3: 'DISASSOC',
+        4: 'SYNCLOST',
+        5: 'COORDREALIGNED',
+        6: 'COORDSTART',
+    }
 
     def __init__(self, status):
         if status in self.status_values:
@@ -231,15 +229,15 @@ class XBeeAPITXStatus(XBeeAPIPacket):
 
     api_id = b'\x89'
     status_values = {
-            0: 'SUCCESS',
-            1: 'NOACK',
-            2: 'CCAFAIL',
-            3: 'PURGED',
-            }
+        0: 'SUCCESS',
+        1: 'NOACK',
+        2: 'CCAFAIL',
+        3: 'PURGED',
+    }
 
     def __init__(self, fid, status):
         self.fid = fid
-        self._status = status
+        self._status = status../python/xbeeapi.py
         self.status = self.status_values.get(status, 'ERROR')
 
     def pack(self):
@@ -456,7 +454,7 @@ class XBeeAPIHubFiles(XBeeAPIHub):
 
     Attributes:
         devices -- map of connected devices, ind, autoexed by address
-        auto_add -- automatically add new devices 
+        auto_add -- automatically add new devices
 
     """
 

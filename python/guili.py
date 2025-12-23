@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-import os
 import io
 import json
+import mimetypes
+import os
+import posixpath
+import shutil
 import threading
 import time
-import posixpath
-import urllib
-import mimetypes
-import shutil
 import traceback
-from socketserver import ThreadingMixIn
+import urllib
 from contextlib import contextmanager
+from pathlib import Path, PurePosixPath
+from socketserver import ThreadingMixIn
 import serial
 import rome
 from websocket import WebSocketServer, WebSocketRequestHandler
@@ -18,11 +19,8 @@ from websocket import WebSocketServer, WebSocketRequestHandler
 if not mimetypes.inited:
     mimetypes.init()
 
-# define bootloader client, if bootloader module is available
-try:
-    import bootloader
-except ImportError:
-    bootloader = None
+# No bootloader for now
+bootloader = None
 
 
 class GuiliRequestHandler(WebSocketRequestHandler):
@@ -43,17 +41,15 @@ class GuiliRequestHandler(WebSocketRequestHandler):
     """
 
     redirects = {
-            '/': '/guili/',
-            '/guili': '/guili/',
-            }
+        '/': '/guili/',
+        '/guili': '/guili/',
+    }
     ws_prefix = 'ws'
     files_prefix = 'guili'
     files_base_path = None  # disabled
     files_extensions = ['.html', '.css', '.js', '.svg', '.png', '.eot', '.ttf', '.woff']
     files_index = 'guili.html'
     bootloader_prefix = 'bl'
-    bootloader_sync_tries = 3
-    bootloader_sync_timeout = 2
 
 
     def do_GET(self):
@@ -93,41 +89,29 @@ class GuiliRequestHandler(WebSocketRequestHandler):
         if self.files_base_path is None:
             return self.send_error(404)
 
-        if path:
-            parts = path.split('/')
-        else:
-            # index
-            parts = self.files_index.split('/')
+        # Build filesystem path from (sanitized) request path
+        parts = PurePosixPath(path or self.files_index).parts
+        parts = [p for p in parts if p != '/' and not p.startswith('.')]
+        fspath = self.files_base_path / PurePosixPath(*parts)
 
-        # build filesystem path from (sanitized) request path
-        fspath = self.files_base_path
-        for p in parts:
-            p = os.path.splitdrive(p)[1]
-            p = os.path.split(p)[1]
-            if p in (os.curdir, os.pardir):
-                continue
-            fspath = os.path.join(fspath, p)
-
-        # filter by extension
-        ext = os.path.splitext(fspath)[1]
-        if ext not in self.files_extensions:
+        # Filter by extension
+        if fspath.suffix not in self.files_extensions:
             return self.send_error(404)
 
         try:
-            f = open(fspath, 'rb')
-        except IOError:
+            f = fspath.open('rb')
+        except FileNotFoundError:
             return self.send_error(404)
-        # send HTTP reply
-        mimetype = mimetypes.types_map.get(ext, 'application/octet-stream')
-        self.send_response(200)
-        self.send_header('Content-type', mimetype)
-        fstat = os.fstat(f.fileno())
-        self.send_header('Content-Length', str(fstat[6]))
-        #self.send_header('Last-Modified', self.date_time_string(fstat.st_mtime))
-        self.end_headers()
-        # output file content
-        shutil.copyfileobj(f, self.wfile)
-        f.close()
+        with f:
+            # Send HTTP reply
+            mimetype = mimetypes.types_map.get(fspath.suffix, 'application/octet-stream')
+            self.send_response(200)
+            self.send_header('Content-type', mimetype)
+            fstat = os.fstat(f.fileno())
+            self.send_header('Content-Length', str(fstat[6]))
+            self.end_headers()
+            # Output file content
+            shutil.copyfileobj(f, self.wfile)
 
 
     def handle_bootloader(self, path):
@@ -143,52 +127,13 @@ class GuiliRequestHandler(WebSocketRequestHandler):
         if robot is None or robot not in self.server.robots:
             return self.send_error(404)
 
-        fhex = io.StringIO(self.rfile.read(int(self.headers.get('content-length'))).decode('ascii'))
-        return self.bootloader_program(robot, fhex)
+        content_length = int(self.headers.get('content-length'))
+        data = io.BytesIO(self.rfile.read(content_length))
+        return self.bootloader_program(robot, data)
 
     def bootloader_program(self, robot, fhex):
         if bootloader is None:
             return self.send_error(400, "Bootloader client not found")
-        if 'reset' not in rome.frame.messages_by_name:
-            return self.send_error(400, "No reset message")
-        reset_frame_data = rome.Frame('reset').data()
-
-        # prepare the bootloader client
-        client = self.server.clients[robot]
-
-        myself = self
-        class BootloaderClient(bootloader.Client):
-            # For debug
-            #def output_recv_frame(self, data):
-            #  myself.log_message("BL << %r", data)
-            #def output_send_frame(self, data):
-            #  myself.log_message("BL >> %r", data)
-            def output_program_progress(self, ncur, nmax):
-                myself.log_message("programming '%s' page %d / %d", robot, ncur, nmax)
-
-        bl = BootloaderClient(client.fo)
-        self.log_message("prepare to bootload '%s'" % robot)
-        with client.exclusive_mode():
-            bl.start()
-            try:
-                for i in range(self.bootloader_sync_tries):
-                    client.fo.write(reset_frame_data)
-                    #TODO synchronize / wait for reboot
-                    #TODO only iterate over bootloader sync, fhex cannot be read twice
-                    try:
-                        bl.program(fhex)
-                        self.log_message("program uploaded on '%s'" % robot)
-                        bl.boot()
-                        self.send_response(200)
-                        return
-                    except bootloader.ClientError as e:
-                        self.log_message("failed to program '%s': %s" % (robot, e))
-                        continue
-                else:
-                    return self.send_error(500, "Bootloader timeout")
-            finally:
-                bl.stop()
-
 
     def ws_setup(self):
         self.lock = threading.RLock()
@@ -231,7 +176,7 @@ class GuiliRequestHandler(WebSocketRequestHandler):
 
     def wsdo_rome_messages(self):
         """Send ROME message definitions"""
-        messages = { msg.name: [(k,t.name) for k,t in msg.ptypes] for msg in rome.messages.values() }
+        messages = {msg.name: [(k, t.name) for k, t in msg.ptypes] for msg in rome.messages.values()}
         self.send_event('messages', {'messages': messages})
 
     def wsdo_configurations(self):
@@ -255,14 +200,14 @@ class GuiliServer(ThreadingMixIn, WebSocketServer):
     GuiliRequestHandlerClass = GuiliRequestHandler
 
     def __init__(self, addr, robots):
+        super().__init__(addr, self.GuiliRequestHandlerClass)
         self.data = None
         self.requests = set()
         self.lock = threading.RLock()
-        WebSocketServer.__init__(self, addr, self.GuiliRequestHandlerClass)
         self.robots = robots
         # load configurations
         try:
-            with open(os.path.join(os.path.dirname(__file__), 'configurations.json')) as f:
+            with (Path(__file__).parent / 'configurations.json').open() as f:
                 self.configurations = json.load(f)
         except IOError:
             self.configurations = {}
@@ -288,21 +233,22 @@ class TestGuiliServer(GuiliServer):
             print("ROME[%s]: %s %r" % ('' if robot is None else robot, name, params))
 
     def __init__(self, addr, devices):
+        GuiliServer.__init__(self, addr, [d[0] for d in devices])
         # define only our messages
         rome.frame.unregister_all_messages()
         rome.frame.register_messages(
-                (0x20, [
-                    ('asserv_tm_xya',   [('x','dist'), ('y','dist'), ('a','angle')]),
-                    ('asserv_tm_htraj_carrot_xy', [('x','dist'), ('y','dist')]),
-                    ('r3d2_tm_detection', [('i','uint8'), ('detected','bool'), ('a','angle'), ('r','dist')]),
-                    ('r3d2_tm_arcs', [('i','uint8'), ('a1','angle'), ('a2','angle')]),
-                    ('order_dummy', [('arg1','dist'), ('arg2','uint8')]),
-                    ]),
-                )
-        GuiliServer.__init__(self, addr, [d[0] for d in devices])
+            (0x20, [
+                ('asserv_tm_xya',   [('x','dist'), ('y','dist'), ('a','angle')]),
+                ('asserv_tm_htraj_carrot_xy', [('x','dist'), ('y','dist')]),
+                ('r3d2_tm_detection', [('i','uint8'), ('detected','bool'), ('a','angle'), ('r','dist')]),
+                ('r3d2_tm_arcs', [('i','uint8'), ('a1','angle'), ('a2','angle')]),
+                ('order_dummy', [('arg1','dist'), ('arg2','uint8')]),
+            ]),
+        )
         self._frame_threads = [
-                TickThread(0.1, self.on_robot_event, [d[0], self.gen_frames(i, d[0])])
-                for i,d in enumerate(devices) ]
+            TickThread(0.1, self.on_robot_event, [d[0], self.gen_frames(i, d[0])])
+            for i,d in enumerate(devices)
+        ]
 
     def start(self):
         for th in self._frame_threads:
@@ -325,14 +271,14 @@ class TestGuiliServer(GuiliServer):
 
         # detection frames
         detection = [
-                        [None,              (math.pi/3, 1000)],
-                        [(-math.pi/6,  50), (math.pi/3,  800)],
-                        [(-math.pi/3, 100), (math.pi/4,  500)],
-                        [(-math.pi/3, 500), (math.pi/4,  500)],
-                        [(-math.pi/6, 500),  None],
-                        [None,  None],
-                        ]
-        detection = { N*i/len(detection): v for i,v in enumerate(detection) }
+            [None,              (math.pi/3, 1000)],
+            [(-math.pi/6,  50), (math.pi/3,  800)],
+            [(-math.pi/3, 100), (math.pi/4,  500)],
+            [(-math.pi/3, 500), (math.pi/4,  500)],
+            [(-math.pi/6, 500),  None],
+            [None,  None],
+        ]
+        detection = {N*i/len(detection): v for i,v in enumerate(detection)}
 
         for i in itertools.cycle(range(N)):
             if i == 0:
@@ -341,17 +287,20 @@ class TestGuiliServer(GuiliServer):
                 yield rome.Frame('log', 'info', "%s: half turn" % robot)
             # asserv carrot
             if i % (N//6) == 0:
-                yield rome.Frame('asserv_tm_htraj_carrot_xy',
-                        int(r * math.cos(2*((i+N/6) % N)*math.pi/N)),
-                        int(r * math.sin(2*((i+N/6) % N)*math.pi/N))+1000)
+                yield rome.Frame(
+                    'asserv_tm_htraj_carrot_xy',
+                    int(r * math.cos(2*((i+N/6) % N)*math.pi/N)),
+                    int(r * math.sin(2*((i+N/6) % N)*math.pi/N))+1000,
+                )
             # asserv position
-            yield rome.Frame('asserv_tm_xya',
-                    int(r * math.cos(2*i*math.pi/N)),
-                    int(r * math.sin(2*i*math.pi/N))+1000,
-                    math.pi*(2.0*i/N))
+            yield rome.Frame(
+                'asserv_tm_xya',
+                int(r * math.cos(2*i*math.pi/N)),
+                int(r * math.sin(2*i*math.pi/N))+1000,
+                math.pi*(2.0*i/N),
+            )
             if i in detection:
-                d = detection[i]
-                for j,v in enumerate(detection[i]):
+                for j, v in enumerate(detection[i]):
                     if v is None:
                         yield rome.Frame('r3d2_tm_detection', j, False, 0, 0)
                     else:
@@ -392,9 +341,8 @@ class RomeClientGuiliServer(GuiliServer):
                 self.server.clients[robot].send(frame)
 
     class RomeClientClass(rome.ClientEcho):
-
         def __init__(self, server, robot, fo):
-            rome.ClientEcho.__init__(self,fo)
+            rome.ClientEcho.__init__(self, fo)
             self.guili_server = server
             self.guili_robot = robot
             self.__lock = threading.RLock()
@@ -418,7 +366,7 @@ class RomeClientGuiliServer(GuiliServer):
 
     def __init__(self, addr, devices):
         GuiliServer.__init__(self, addr, [d[0] for d in devices])
-        self.clients = { robot: self.RomeClientClass(self, robot, fo) for robot, fo in devices }
+        self.clients = {robot: self.RomeClientClass(self, robot, fo) for robot, fo in devices}
         self.__exclusive_mode_lock = threading.Lock()
 
     def start(self):
@@ -452,7 +400,7 @@ def main():
 
     args = parser.parse_args()
     if args.web_dir != '':
-        GuiliRequestHandler.files_base_path = os.path.abspath(args.web_dir)
+        GuiliRequestHandler.files_base_path = Path(args.web_dir)
     rome.Frame.set_ack_range(128, 256)
 
     if args.xbee_api:

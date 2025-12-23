@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+import base64
+import hashlib
+import struct
 import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import hashlib
-import base64
-import struct
 
 
 class WebSocketServer(HTTPServer):
@@ -39,14 +39,15 @@ class WebSocketRequestHandler(BaseHTTPRequestHandler):
             # get first frame
             self._offset = 0  # offset, for key
             opcode = self.next_frame()
-            if opcode == 0:
-                raise WebSocketCloseFrame(1002, "unexpected continuation frame")
-            if opcode == 1:
-                self._utf8 = True
-            elif opcode == 2:
-                pass # binary
-            else:
-                raise WebSocketCloseFrame(1002, "unknown opcode: 0x%X" % opcode)
+            match opcode:
+                case 0:
+                    raise WebSocketCloseFrame(1002, "unexpected continuation frame")
+                case 1:
+                    self._utf8 = True
+                case 2:
+                    pass  # Binary
+                case _:
+                    raise WebSocketCloseFrame(1002, "unknown opcode: 0x%X" % opcode)
 
         def read(self, n=None):
             if n == 0 or self._fin and self._len == 0:
