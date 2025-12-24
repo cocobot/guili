@@ -24,8 +24,8 @@ Portlet.register('logs', 'Logs', class extends Portlet {
       if(this.robot_tags[frame.robot]) {
         tag = '<span class="log-tag">' + this.robot_tags[frame.robot] + '</span>';
       }
-      entry.innerHTML = '<span class="log-date">'+str_date+'</span>'+tag+'<span class="log-msg">'+frame.params.msg+'</span>';
-      entry.classList.add('log-'+frame.params.sev);
+      entry.innerHTML = '<span class="log-date">'+str_date+'</span>'+tag+'<span class="log-msg">'+frame.args.msg+'</span>';
+      entry.classList.add('log-'+frame.args.sev);
       this.backlog.appendChild(entry);
 
       while(this.backlog.childNodes.length > this.backlog_size) {

@@ -23,7 +23,7 @@ Portlet.register('boomotter', 'Boomotter', class extends Portlet {
     select_mode.addEventListener('change', () => {
       gs.robots.forEach(r => {
         if(normalizeRobotName(r) == 'boomotter') {
-          gs.sendRomeMessage(r, 'boomotter_set_mode', {mode: select_mode.value});
+          gs.sendRomeFrame(r, 'boomotter_set_mode', {mode: select_mode.value});
         }
       });
     });
@@ -32,7 +32,7 @@ Portlet.register('boomotter', 'Boomotter', class extends Portlet {
       const volume = this.content.querySelector('.boomotter-volume').value;
       gs.robots.forEach(r => {
         if(normalizeRobotName(r) == 'boomotter') {
-          gs.sendRomeMessage(r, 'boomotter_mp3_cmd', {cmd: 6, param: volume});
+          gs.sendRomeFrame(r, 'boomotter_mp3_cmd', {cmd: 6, param: volume});
         }
       });
     });

@@ -20,9 +20,9 @@
  *     - error: error message string, in case of error
  *   - log: a message to log to the browser console (used for debug)
  *     - data: data to log
- *   - rome: a ROME message to send
+ *   - rome: a ROME frame to send
  *     - name: name of the ROME message
- *     - params: ROME message parameters as an Object
+ *     - args: ROME message arguments as an Object or Array
  */
 
 Portlet.register('console', 'Console', class extends Portlet {
@@ -45,7 +45,7 @@ Portlet.register('console', 'Console', class extends Portlet {
           cb(data);
         }
       } else if(method == 'rome') {
-        gs.sendRomeMessage(data.robot, data.name, data.params);
+        gs.sendRomeFrame(data.robot, data.name, data.args);
       } else if(method == 'log') {
         console.log(data.data);  // for debug
       }

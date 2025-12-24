@@ -14,6 +14,7 @@
 
   // pack positional message parameters into an object
   var packRomeParams = function(msg, args) {
+    //TODO Support tuple args
     var ptypes = msg.ptypes
     var nargs = args.length;
     var kw;
@@ -128,19 +129,24 @@
         request.robots.forEach(function(robot) {
           self[robot] = {};
         });
+        //TODO Add 'snake_case' aliases
         for(var k in request.messages) {
           (function() {
             var name = k;
-            var ptypes = request.messages[k];
-            var msg = { name: k, ptypes: ptypes, name2type: {} };
-            for(var i=0; i<ptypes.length; i++) {
-              var p = ptypes[i];
-              msg.name2type[p[0]] = p[1];
+            var params = request.messages[k];
+            var msg = { name: k };
+            if(params instanceof Array) {
+              msg.ptypes = params;
+              msg.name2type = {};  // No named parameters
+            } else {
+              // Assume Object
+              msg.ptypes = Object.values(params);
+              msg.name2type = params;
             }
             var f = function() {
               var args = Array.from(arguments);
               var robot = args.shift();
-              postMessage({ method: 'rome', robot: robot, name: name, params: packRomeParams(msg, args) });
+              postMessage({ method: 'rome', robot: robot, name: name, args: packRomeParams(msg, args) });
             };
             self.rome[k] = f.bind(null, null);
             request.robots.forEach(function(robot) {

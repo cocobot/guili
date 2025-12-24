@@ -23,10 +23,10 @@ Portlet.register('match', 'Match', class extends Portlet {
     }
 
     this.bindFrame(null, 'tm_match_timer', (frame) => {
-      this.updateTimer(frame.params.seconds);
+      this.updateTimer(frame.args.seconds);
     });
     this.bindFrame(null, 'tm_score', (frame) => {
-      this.scores[frame.robot].text(frame.params.points + ' pts');
+      this.scores[frame.robot].text(frame.args.points + ' pts');
     });
   }
 

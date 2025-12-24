@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
 import base64
+import io
 import hashlib
 import struct
 import sys
@@ -95,11 +95,11 @@ class WebSocketRequestHandler(BaseHTTPRequestHandler):
             return opcode
 
 
-    def on_message(self, fo):
+    def on_message(self, fo) -> None:
         """Method called to handle messages
         fo is a file object from which message data can be read.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def close(self, status, reason=None):
         """Send a close frame and close the connection
@@ -151,7 +151,7 @@ class WebSocketRequestHandler(BaseHTTPRequestHandler):
             return self.ws_send_close_frame(1008, str(e))
         finally:
             self.ws_finish()
-            self.close_connection = 1
+            self.close_connection = True
 
 
     def ws_setup(self):
@@ -270,7 +270,7 @@ def main():
     class RequestHandler(WebSocketRequestHandler):
         def do_GET(self):
             return self.handle_websocket()
-        def on_message(self, fo):
+        def on_message(self, fo) -> None:
             s = "received message: %r" % fo.read()
             self.ws_send_frame(1, s)
 

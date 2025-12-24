@@ -20,35 +20,36 @@ Portlet.register('asserv', 'Asserv', class extends Portlet {
       this.content.querySelector('div.portlet-title').textContent = "Asserv › "+robot;
     }
 
-    this.bindFrame(robot, 'asserv_tm_xya', (frame) => {
-      const params = frame.params;
+    this.bindFrame(robot, 'AsservTelemetry', (frame) => {
+      const args = frame.args;
       const tds = this.content.querySelectorAll('td');
-      tds[0].textContent = params.x.toFixedHtml(0);
-      tds[1].textContent = params.y.toFixedHtml(0);
-      tds[2].textContent = params.a.toFixedHtml(2);
+      tds[0].textContent = args.x.toFixedHtml(0);
+      tds[1].textContent = args.y.toFixedHtml(0);
+      tds[2].textContent = args.a.toFixedHtml(2);
     });
-    this.bindFrame(robot, 'asserv_tm_htraj_carrot_xy', (frame) => {
-      const params = frame.params;
+    this.bindFrame(robot, 'AsservTmCarrot', (frame) => {
+      const args = frame.args;
       const tds = this.content.querySelectorAll('td');
-      tds[3].textContent = params.x.toFixedHtml(0);
-      tds[4].textContent = params.y.toFixedHtml(0);
+      tds[3].textContent = args.x.toFixedHtml(0);
+      tds[4].textContent = args.y.toFixedHtml(0);
     });
+    //TODO Update message names
     this.bindFrame(robot, 'asserv_tm_htraj_done', (frame) => {
-      const params = frame.params;
+      const args = frame.args;
       const tds = this.content.querySelectorAll('td');
-      tds[0].classList.toggle('portlet-asserv-done', params.xy);
-      tds[1].classList.toggle('portlet-asserv-done', params.xy);
-      tds[2].classList.toggle('portlet-asserv-done', params.a);
+      tds[0].classList.toggle('portlet-asserv-done', args.xy);
+      tds[1].classList.toggle('portlet-asserv-done', args.xy);
+      tds[2].classList.toggle('portlet-asserv-done', args.a);
     });
     this.bindFrame(robot, 'asserv_tm_htraj_path_index', (frame) => {
-      const params = frame.params;
+      const args = frame.args;
       const tds = this.content.querySelectorAll('td');
-      tds[5].textContent = params.i + " / " + params.size;
+      tds[5].textContent = args.i + " / " + args.size;
     });
     this.bindFrame(robot, 'tm_match_timer', (frame) => {
-      const params = frame.params;
+      const args = frame.args;
       const tds = this.content.querySelectorAll('td');
-      tds[8].textContent = params.seconds + 's';
+      tds[8].textContent = args.seconds + 's';
     });
   }
 

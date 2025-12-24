@@ -87,15 +87,15 @@ Portlet.register('detection', 'Detection', class extends Portlet {
   }
 
   updateDetections(frame) {
-    const params = frame.params;
-    let d = this.detections[frame.robot][params.i];
+    const args = frame.args;
+    let d = this.detections[frame.robot][args.i];
     if(d === undefined) {
       d = this.addDetection(frame.robot);
     }
-    if(params.detected) {
+    if(args.detected) {
       d.svg.setAttribute('opacity', 1);
-      d.txt_r.textContent = params.r.toFixedHtml(0);
-      d.txt_a.textContent = params.a.toFixedHtml(2);
+      d.txt_r.textContent = args.r.toFixedHtml(0);
+      d.txt_a.textContent = args.a.toFixedHtml(2);
     } else {
       d.svg.setAttribute('opacity', 0);
       d.txt_r.textContent = '';
@@ -103,9 +103,9 @@ Portlet.register('detection', 'Detection', class extends Portlet {
       return;
     }
 
-    let r = params.r/10.0;
+    let r = args.r/10.0;
     let radius;
-    if(params.r < 0) {
+    if(args.r < 0) {
       radius = 40;
       r = 175;
     }
@@ -113,8 +113,8 @@ Portlet.register('detection', 'Detection', class extends Portlet {
       radius = 4;
     }
 
-    const x = -r*Math.cos(params.a);
-    const y = r*Math.sin(params.a);
+    const x = -r*Math.cos(args.a);
+    const y = r*Math.sin(args.a);
 
     d.ping.setAttributes({
       'r':radius,
@@ -124,18 +124,18 @@ Portlet.register('detection', 'Detection', class extends Portlet {
   }
 
   updateArcs(frame) {
-    const params = frame.params;
-    let d = this.detections[frame.robot][params.i];
+    const args = frame.args;
+    let d = this.detections[frame.robot][args.i];
     if(d === undefined) {
       d = this.addDetection(frame.robot);
     }
 
     let x,y,r = 200;
-    x = -r*Math.cos(params.a1);
-    y = r*Math.sin(params.a1);
+    x = -r*Math.cos(args.a1);
+    y = r*Math.sin(args.a1);
     d.arc1.setAttributes({'x2':x, 'y2':y});
-    x = -r*Math.cos(params.a2);
-    y = r*Math.sin(params.a2);
+    x = -r*Math.cos(args.a2);
+    y = r*Math.sin(args.a2);
     d.arc2.setAttributes({'x2':x, 'y2':y});
   }
 

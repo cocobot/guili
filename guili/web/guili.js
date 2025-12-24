@@ -284,12 +284,12 @@ const gs = new class {
 
   // send a method call
   callMethod(name, params) {
-    this.ws.send(JSON.stringify({method: name, params: params}));
+    this.ws.send(JSON.stringify({ method: name, params }));
   }
 
-  // send a ROME message
-  sendRomeMessage(robot, name, params) {
-    this.callMethod('rome', { robot: robot, name: name, params: params });
+  // send a ROME frame
+  sendRomeFrame(robot, name, args) {
+    this.callMethod('rome', { robot, name, args });
   }
 
   // play a single frame
@@ -671,8 +671,9 @@ document.querySelector('#timeline-speed').addEventListener('change', function(ev
 
 // battery check
 gevents.addHandler('rome-frame', function(frame) {
+  //TODO Change message name
   if(frame.name == 'tm_battery') {
-    gs.voltages[frame.robot] = frame.params.voltage;
+    gs.voltages[frame.robot] = frame.args.voltage;
     const text = [];
     if(gs.robots !== null) {
       gs.robots.forEach(r => {
