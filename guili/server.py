@@ -1,17 +1,21 @@
 import io
 import json
+import logging
 import mimetypes
 import os
 import posixpath
 import shutil
 import threading
 import time
-import traceback
 import urllib
 from pathlib import Path, PurePosixPath
 from socketserver import ThreadingMixIn
+from typing import Any
 from .rome_setup import rome
 from .websocket import WebSocketServer, WebSocketRequestHandler
+
+logger = logging.getLogger("guili")
+logger_http = logging.getLogger("guili.http")
 
 # Base directory of served files
 WEB_FILES_PATH = Path(__file__).parent / "web"
@@ -131,15 +135,15 @@ class GuiliRequestHandler(WebSocketRequestHandler):
         if bootloader is None:
             return self.send_error(400, "Bootloader client not found")
 
-    def ws_setup(self):
+    def ws_setup(self) -> None:
         self.lock = threading.RLock()
         self.paused = True
 
-    def ws_finish(self):
+    def ws_finish(self) -> None:
         with self.server.lock:
             self.server.requests.discard(self)
 
-    def send_event(self, name, params):
+    def send_event(self, name: str, params: dict[str, Any]) -> None:
         """Send an event"""
         with self.lock:
             self.ws_send_frame(1, json.dumps({'event': name, 'params': params}))
@@ -149,21 +153,21 @@ class GuiliRequestHandler(WebSocketRequestHandler):
         try:
             getattr(self, 'wsdo_'+data['method'].replace('-', '_'))(**data['params'])
         except Exception as e:
-            traceback.print_exc()
+            logger.exception("Failed to send message")
             self.send_event('log', {'severity': 'error', 'message': "%s: %s" % (e.__class__.__name__, str(e))})
 
-    def wsdo_init(self):
+    def wsdo_init(self) -> None:
         """Initialize a client"""
         self.paused = False
         with self.server.lock:
             self.server.requests.add(self)
 
-    def wsdo_robots(self):
+    def wsdo_robots(self) -> None:
         """Send list of handled robots"""
         with self.lock:
             self.send_event('robots', {'robots': self.server.robots})
 
-    def wsdo_pause(self, paused):
+    def wsdo_pause(self, paused) -> None:
         """Pause or unpause a client"""
         self.paused = bool(paused)
 
@@ -171,14 +175,17 @@ class GuiliRequestHandler(WebSocketRequestHandler):
         """Send a ROME message"""
         raise NotImplementedError
 
-    def wsdo_rome_messages(self):
+    def wsdo_rome_messages(self) -> None:
         """Send ROME message definitions"""
         messages = {msg.name: msg.params for msg in rome.messages.values()}
         self.send_event('messages', {'messages': messages})
 
-    def wsdo_configurations(self):
+    def wsdo_configurations(self) -> None:
         """Send portlets configurations"""
         self.send_event('configurations', {'configurations': self.server.configurations})
+
+    def log_message(self, format, *args) -> None:
+        logger_http.debug(format, *args)
 
 
 class GuiliServer(ThreadingMixIn, WebSocketServer):
@@ -237,16 +244,15 @@ class TestGuiliServer(GuiliServer):
 
     class GuiliRequestHandlerClass(GuiliRequestHandler):
         def wsdo_rome(self, robot: str, name: str, args: rome.Arguments) -> None:
-            print("ROME[%s]: %s %r" % ('' if robot is None else robot, name, args))
+            logger.debug("ROME[%s]: %s %r" % ('' if robot is None else robot, name, args))
 
-    def __init__(self, addr: tuple[str, int], devices: list[str]):
-        # Note: for a test server, devices are directly names, not addresses
-        super().__init__(addr, devices)
+    def __init__(self, addr: tuple[str, int], robots: list[str]):
+        super().__init__(addr, robots)
         # Define only our messages
         rome.register_messages(self.default_messages(), append=False)
         self._frame_threads = [
             TickThread(0.1, self.on_robot_event, [d, self.gen_frames(i, d)])
-            for i, d in enumerate(devices)
+            for i, d in enumerate(robots)
         ]
 
     @staticmethod

@@ -1,10 +1,13 @@
 import asyncio
 import queue
 import concurrent
+import logging
 import threading
 from bleak import BleakClient, BleakScanner
 from .rome_setup import rome
 from .server import GuiliRequestHandler, GuiliServer
+
+logger = logging.getLogger("guili.ble")
 
 
 SERVICE_ROME_UUID = "81870000-ffa5-4969-9ab4-e777ca411f95"
@@ -20,10 +23,10 @@ class BleCentral:
     Public methods are thread safe.
     """
 
-    def __init__(self, server: "BleGuiliServer", addresses: list[str]):
-        #TODO Add an option to connect to any device with matching service
+    def __init__(self, server: "BleGuiliServer", devices: list[str] | None):
         self.server = server
-        self.clients: dict[str, BleakClient | None] = {addr.upper(): None for addr in addresses}
+        self.clients: dict[str, BleakClient] = {}
+        self.filtered_devices = devices
         self.loop = None
         self.scan_future = None
         self.thread = None
@@ -34,16 +37,17 @@ class BleCentral:
         if self.thread is not None or self.loop is not None:
             raise RuntimeError("Already started")
 
-        print("BLE: start central thread")
+        logger.info("Start central thread")
         self.loop = asyncio.new_event_loop()
         self.thread = threading.Thread(target=self._run_forever, daemon=True)
         self.thread.start()
 
     def stop(self):
         """Stop the BLE central async loop"""
+
         if self.loop is None:
             raise RuntimeError("Not started")
-        print("BLE: stop central loop and thread")
+        logger.info("Stop central loop and thread")
         self.loop.stop()
         self.loop = None
         if self.thread is not None:
@@ -58,9 +62,9 @@ class BleCentral:
             assert self.loop is not None
             self.loop.run_forever()
             self.loop = None
-            print("BLE: central loop thread ended")
-        except Exception as e:
-            print(f"BLE: central loop thread error: {e}")
+            logger.info("Central loop ended")
+        except Exception:
+            logger.exception("Central loop failed")
             raise
 
     def scan(self, delay: float):
@@ -69,7 +73,7 @@ class BleCentral:
         if self.loop is None:
             raise RuntimeError("BLE central not started")
         if self.scan_future and not self.scan_future.done():
-            print("BLE: cancel current scan")
+            logger.debug("Cancel current scan")
             self.scan_future.cancel()
             if not self.scan_future.done():
                 raise RuntimeError("Failed to cancel scan future")
@@ -84,23 +88,34 @@ class BleCentral:
         future = asyncio.run_coroutine_threadsafe(self._do_send_frame(robot, frame), self.loop)
         future.add_done_callback(self._future_callback)
 
+    def filter_device(self, device) -> bool:
+        """Filter a scanned device, return True we should connect to it"""
+        if self.filtered_devices is None:
+            return True
+        else:
+            return device.name in self.filtered_devices or device.address in self.filtered_devices
+
     async def _do_scan(self, delay: float):
         """Start a scan, connect to known devices"""
 
-        print("BLE: start scan")
+        logger.info(f"Start scan ({delay}s)")
         async with BleakScanner(service_uuids=[SERVICE_ROME_UUID]) as scanner:
             try:
                 async with asyncio.timeout(delay):
-                    async for device, _data in scanner.advertisement_data():
-                        print("DEBUG: advertisement", device, _data)
-                        if device.address not in self.clients:
-                            return
-                        if self.clients[device.address] is not None:
-                            return  # Already connected
-                        print(f"BLE: connecting to {device.address} ({device.name!r}) ...")
-                        client = BleakClient(device, disconnected_callback=self._on_disconnected_client)
+                    async for device, data in scanner.advertisement_data():
+                        logger.debug("Advertisement from %r: %r", device, data)
+                        if device.address in self.clients:
+                            continue  # Already connected
+                        if not self.filter_device(device):
+                            continue
+                        logger.info(f"Connecting to {device.address} {device.name!r} ...")
+                        client = BleakClient(device, services=[SERVICE_ROME_UUID], disconnected_callback=self._on_disconnected_client)
                         await client.connect()
-                        print(f"BLE: connected to {device.address} ({device.name!r})")
+                        # Sometimes, services are not correctly retrieved and thus the device cannot be used
+                        if not client.services.get_characteristic(CHAR_ROME_TELEMETRY_UUID):
+                            logger.warn("Missing ROME characteristic on {device.address} {device.name!r}, abort connection")
+                            continue
+                        logger.info(f"Connected to {device.address} {device.name!r}")
                         self.clients[device.address] = client
                         self._update_server_robots()
                         #TODO Set MTU?
@@ -109,29 +124,30 @@ class BleCentral:
                         await client.start_notify(CHAR_ROME_TELEMETRY_UUID, telemetry_callback)
             except TimeoutError:
                 pass
-        print("BLE: end of scan")
+        logger.info("End of scan")
 
     async def _do_send_frame(self, robot: str | None, frame: rome.Frame) -> None:
         data = frame.encode()
-        clients: list[BleakClient] = [self.clients.get(robot) if robot is not None else self.clients.values()]
-        promises = [c.write_gatt_char(CHAR_ROME_ORDERS_UUID, data) for c in clients if c is not None]
+        clients: list[BleakClient] = [self.clients.get(robot)] if robot is not None else self.clients.values()
+        promises = [c.write_gatt_char(CHAR_ROME_ORDERS_UUID, data) for c in clients if c]
         if not promises:
             return  # Nobody to send to
         await asyncio.gather(*promises)
 
     def _on_disconnected_client(self, client: BleakClient) -> None:
-        print(f"BLE: client disconnected: {client.address} ({client.name!r})")
-        assert client.address in self.clients
-        self.clients[client.address] = None
+        logger.warn(f"Client disconnected: {client.address} ({client.name!r})")
+        if client.address not in self.clients:
+            return  # May happen if client has not the required characteristics yet
+        del self.clients[client.address]
         self._update_server_robots()
 
     async def _on_rome_telemetry(self, client: BleakClient, data: bytes) -> None:
         try:
             frame = rome.Message.decode(data)
         except Exception as e:
-            print(f"Invalid frame: {e}")
+            logger.error(f"Invalid ROME frame: {e}")
             return
-        print(f"BLE: ROME frame from {client.name}: {frame}")
+        logger.debug("ROME frame from %r: %s", client.name, frame)
         self.server.queue.put_nowait(("on_frame", client.name, frame))
 
     def _future_callback(self, future: concurrent.futures.Future) -> None:
@@ -139,15 +155,12 @@ class BleCentral:
         assert future.done()
         ex = future.exception(0)
         if ex is not None:
+            logger.error("Future failed", exc_info=ex)
             #TODO Log to the WS
-            #TODO Use proper logging
-            import traceback
-            traceback.print_exception(ex)
-            print(f"BLE: future error: {ex}")
 
     def _update_server_robots(self) -> None:
         """Update robots on the Guili server"""
-        robots = [c.name for c in self.clients.values() if c]
+        robots = [c.name for c in self.clients.values()]
         self.server.queue.put_nowait(("update_robots", robots))
 
 
@@ -176,7 +189,7 @@ class BleGuiliServer(GuiliServer):
         _queue_thread.start()
         #TODO Add a button in UI to start a scan
         #TODO At startup, scan until at least one robot is found
-        self.central.scan(30)
+        self.central.scan(60)
         super().start()
 
         # Note: threads are never collected/stopped properly
