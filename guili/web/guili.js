@@ -218,8 +218,8 @@ const gtimeline = new class {
 const gs = new class {
   constructor() {
     this.ws = null;  // WebSocket object
-    this.robots = null;  // list of handled robots
-    this.voltages = {};  // voltages, indexed by robot
+    this.robots = {};  // list of handled robots
+    this.battery_levels = {};  // battery levels, as integer percentage, indexed by robot
 
     // event handlers
     this.event_handler = {
@@ -296,6 +296,19 @@ const gs = new class {
   playFrame(frame) {
     Portlet.handleFrame(frame);
     gevents.trigger('rome-frame', frame);
+  }
+
+  // Update battery levels
+  updateBatteryLevels() {
+    const texts = [];
+    this.robots.forEach(r => {
+      const percent = this.battery_levels[r];
+      if (percent !== undefined) {
+        texts.push(`${r}: ${percent}%`);
+      }
+    });
+    document.querySelector('#battery-status').textContent = texts.join(' | ');
+    document.querySelector('body').classList.toggle('battery-low', Object.values(this.battery_levels).some(v => v < 10));
   }
 };
 
@@ -562,18 +575,13 @@ Portlet.frame_handlers = [];
 
 /*****/
 
-// Normalize robot name
-function normalizeRobotName(name, index) {
-  if(name == 'galipeur' || name == 'galipette' || name == 'boomotter') {
-    return name;
-  } else if(name == 'pmi') {
-    return 'galipette';
-  } else if(name == 'boom') {
-    return 'boomotter';
-  } else if(index == 0) {
+// Return robot's category (Galipeur, PAMI, ...) from its name
+function robotCategory(name) {
+  const s = name.toLowerCase();
+  if (s == 'galipeur') {
     return 'galipeur';
-  } else if(index == 1) {
-    return 'galipette';
+  } else if (s.startsWith('pami')) {
+    return 'pami';
   } else {
     return null;
   }
@@ -646,6 +654,11 @@ document.querySelector('#play-pause-icon').addEventListener('click', function() 
   }
 });
 
+// Start BLE scan
+document.querySelector('#scan-icon').addEventListener('click', function() {
+  gs.callMethod('scan', {});
+});
+
 // reopen socket when clicking on WS status
 document.querySelector('#ws-status').addEventListener('click', function() {
   if(gs.ws.readyState == WebSocket.CLOSED) {
@@ -671,29 +684,15 @@ document.querySelector('#timeline-speed').addEventListener('change', function(ev
 
 // battery check
 gevents.addHandler('rome-frame', function(frame) {
-  //TODO Change message name
-  if(frame.name == 'tm_battery') {
-    gs.voltages[frame.robot] = frame.args.voltage;
-    const text = [];
-    if(gs.robots !== null) {
-      gs.robots.forEach(r => {
-        const voltage = gs.voltages[r];
-        if(voltage !== undefined) {
-          text.push(r + ": " + (voltage/1000).toFixedHtml(1) + ' V');
-        }
-      });
-    }
-    document.querySelector('#battery-status').textContent = text.join(' | ');
-    document.querySelector('body').classList.toggle('battery-low',
-      Object.entries(gs.voltages).some(([k,v]) => (
-        v < (normalizeRobotName(k) == 'boomotter' ? 12000 : 13500)
-      ))
-    );
+  if (frame.name == 'BatteryLevel') {
+    gs.battery_levels[frame.robot] = frame.args.percent;
+    gs.updateBatteryLevels();
   }
 });
 
 gevents.addHandler('robots', function(robots) {
   gs.robots = robots;
+  gs.updateBatteryLevels();
 });
 
 gevents.addHandler('portlets-configurations', function(configs) {
@@ -730,7 +729,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // load portlets
   await Portlet.loadAll([
     'asserv', 'field', 'console', 'meca', 'logs', 'detection',
-    'match', 'boomotter',
+    'match',
   ]);
 
   // initialize timeline

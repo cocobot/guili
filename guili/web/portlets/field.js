@@ -23,6 +23,10 @@ Portlet.register('field', 'Field', class extends Portlet {
         // create SVG robots and carrots
         this.initSvgElements(gs.robots);
 
+        gevents.addHandlerFor(this, 'robots', (robots) => {
+          this.initSvgElements(robots);
+        });
+
         // send event when clicking on field
         this.field.addEventListener('mousedown', (ev) => {
           // get drawing position from mouse position
@@ -96,16 +100,17 @@ Portlet.register('field', 'Field', class extends Portlet {
   }
 
   initSvgElements(robots) {
-    // remove existing elements
-    for(const o of Object.values(this.svg_robots)) o.remove();
-    for(const o of Object.values(this.svg_carrots)) o.remove();
-    for(const o of Object.values(this.pathfindings)) o.remove();
+    // Remove existing elements
+    this.svg_robots = {};
+    this.svg_carrots = {};
+    this.pathfindings = {};
+    removeElementChildren(this.frame);
 
-    robots.forEach((robot, irobot) => {
+    robots.forEach(robot => {
       // create SVG robot
       const svg_robot = this.field.createElement('use');
-      const svg_name = normalizeRobotName(robot, irobot);
-      if(svg_name != 'galipeur' && svg_name != 'galipette') {
+      const svg_name = robotCategory(robot);
+      if (svg_name != 'galipeur' && svg_name != 'pami') {
         return;
       }
 

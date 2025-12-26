@@ -15,6 +15,7 @@ body {
 
 #toolbar {
   float: left;
+  display: flex;
   font-size: 15px;
   background-color: #444;
   padding: 0;
@@ -30,6 +31,7 @@ body {
   line-height: 1.7em;
   text-align: center;
   vertical-align: center;
+  white-space: collapse;
 }
 
 #toolbar > i:hover {

@@ -31,7 +31,7 @@ def main():
         server_class = TestGuiliServer
     else:
         server_class = BleGuiliServer
-    print(f"Starting server on port {args.port}")
+    print(f"Starting server, UI available at http://127.0.0.1:{args.port}")
     server = server_class(('', args.port), args.devices)
     try:
         server.start()

@@ -113,7 +113,7 @@ class BleCentral:
                         await client.connect()
                         # Sometimes, services are not correctly retrieved and thus the device cannot be used
                         if not client.services.get_characteristic(CHAR_ROME_TELEMETRY_UUID):
-                            logger.warn("Missing ROME characteristic on {device.address} {device.name!r}, abort connection")
+                            logger.warn(f"Missing ROME characteristic on {device.address} {device.name!r}, abort connection")
                             continue
                         logger.info(f"Connected to {device.address} {device.name!r}")
                         self.clients[device.address] = client
@@ -153,10 +153,12 @@ class BleCentral:
     def _future_callback(self, future: concurrent.futures.Future) -> None:
         """Generic callback for futures, to report errors"""
         assert future.done()
-        ex = future.exception(0)
+        try:
+            ex = future.exception(0)
+        except concurrent.futures.CancelledError:
+            return  # Ignore
         if ex is not None:
             logger.error("Future failed", exc_info=ex)
-            #TODO Log to the WS
 
     def _update_server_robots(self) -> None:
         """Update robots on the Guili server"""
@@ -175,6 +177,10 @@ class BleGuiliServer(GuiliServer):
             else:
                 frame = message(*args)
             self.server.central.send_frame(robot, frame)
+
+        def wsdo_scan(self) -> None:
+            """Start a scan"""
+            self.server.central.scan(30)
 
     def __init__(self, addr: tuple[str, int], devices: list[str]):
         super().__init__(addr, [])

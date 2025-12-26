@@ -4,6 +4,7 @@ version = "2.0"
 requires-python = ">=3.11"
 dependencies = [
   "bleak",
+  "pyyaml",  # Indirect dependency, for rome
 ]
 
 [project.scripts]

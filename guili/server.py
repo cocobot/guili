@@ -177,7 +177,7 @@ class GuiliRequestHandler(WebSocketRequestHandler):
 
     def wsdo_rome_messages(self) -> None:
         """Send ROME message definitions"""
-        messages = {msg.name: msg.params for msg in rome.messages.values()}
+        messages = {msg.name: self._convert_message_params(msg) for msg in rome.messages.values()}
         self.send_event('messages', {'messages': messages})
 
     def wsdo_configurations(self) -> None:
@@ -186,6 +186,19 @@ class GuiliRequestHandler(WebSocketRequestHandler):
 
     def log_message(self, format, *args) -> None:
         logger_http.debug(format, *args)
+
+    @staticmethod
+    def _convert_message_params(message: rome.Message) -> list[str] | int:
+        """Convert a ROME message parameters to a list of parameter names or parameter count"""
+        match message.params:
+            case None:
+                return 0
+            case tuple(items):
+                return len(items)
+            case dict(items):
+                return list(items)
+            case _:
+                raise ValueError("Invalid messsage declaration")
 
 
 class GuiliServer(ThreadingMixIn, WebSocketServer):
@@ -224,7 +237,7 @@ class GuiliServer(ThreadingMixIn, WebSocketServer):
         with self.lock:
             self.robots = robots
             for r in self.requests:
-                pass #TODO self.send_event('robots', self.robots)
+                r.send_event('robots', {'robots': self.robots})
 
     def on_frame(self, robot: str, frame: rome.Frame):
         data = {'robot': robot, 'name': frame.message.name, 'args': frame.args}

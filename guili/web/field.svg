@@ -16,12 +16,19 @@
         stroke: black;
         stroke-width: 10;
       }
-      #def-galipeur .balleater, #def-galipeur .turbine {
+
+      #def-pami .perimeter {
         stroke: black;
-        stroke-width: 5;
+        stroke-width: 10;
       }
-      #def-galipeur .balleater { fill: #dd00dd; }
-      #def-galipeur .turbine { fill: #00dd00; }
+      #def-pami .wheels {
+        stroke: none;
+        fill: black;
+      }
+      #def-pami .basis {
+        stroke: none;
+        fill: black;
+      }
 
       #def-carrot circle {
         stroke: black;
@@ -56,6 +63,19 @@
         <polygon points="-21.250000,156.606261 21.250000,156.606261 146.250000,-59.900090 125.000000,-96.706170 -125.000000,-96.706170 -146.250000,-59.900090" />
       </g>
     </g>
+    <g id="def-pami">
+      <g class="perimeter">
+        <polygon points="53,-42 53,42 -17,42 -17,-42" />
+      </g>
+      <g class="wheels">
+        <polygon points="-15,-42 -15,-32 15,-32 15,-42" />
+        <polygon points="-15,42 -15,32 15,32 15,42" />
+      </g>
+      <g class="basis">
+        <polygon points="53,-15 30,0 53,15" />
+      </g>
+    </g>
+
     <g id="def-carrot">
       <circle r="40" />
     </g>

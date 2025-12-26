@@ -28,6 +28,13 @@ function createElementFromHtml(html) {
   return el.content.cloneNode(true).firstChild;
 }
 
+// Remove all children of an HTML element
+function removeElementChildren(elem) {
+  while (elem.firstChild) {
+    elem.removeChild(elem.firstChild);
+  }
+}
+
 
 // Add time to URLs to avoid cache
 function noCacheUrl(url) {
