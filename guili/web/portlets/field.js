@@ -38,60 +38,12 @@ Portlet.register('field', 'Field', class extends Portlet {
           gevents.trigger('field-point-xy', pos.x, pos.y);
         });
 
-        this.bindFrame(null, 'AsservTelemetry', this.updatePosition);
-        this.bindFrame(null, 'AsservTmCarrot', (frame) => {
-          this.svg_carrots[frame.robot].setAttributes({x: frame.args.x, y: frame.args.y});
-        });
-
-        //TODO Obsolete
-        this.bindFrame(null, 'pathfinding_node', (frame) => {
-          const args = frame.args;
-          const pf = this.pathfindings[frame.robot];
-          // remove node and vertices, if any
-          const cur_node = pf.svg_nodes.querySelector('.graph-node-'+args.i);
-          if(cur_node) {
-            cur_node.remove();
+        this.bindFrame(null, 'AsservTmPosition', this.updatePosition);
+        this.bindFrame(null, 'AsservHoloTmStatus', (frame) => {
+          const carrot = this.svg_carrots[frame.robot];
+          if (carrot) {
+            carrot.setAttributes({x: frame.args.carrot_x, y: frame.args.carrot_y});
           }
-          pf.svg_vertices.querySelectorAll('.graph-vertex-'+args.i).forEach(e => e.remove());
-          // create new node
-          const node = this.field.createElement('circle');
-          node.setAttributes({
-            'r': 25, 'cx': args.x, 'cy': args.y,
-            'class': 'graph-node graph-node-'+args.i,
-          });
-          pf.svg_nodes.appendChild(node);
-          // create vertices
-          args.neighbors.forEach(n => {
-            const node2 = pf.svg_nodes.querySelector('.graph-node-'+n);
-            if(!node2) {
-              return;
-            }
-            const vertex = this.field.createElement('line');
-            vertex.setAttributes({
-              'class': `graph-vertex graph-vertex-${args.i} graph-vertex-${n}`,
-              'x1': args.x, 'y1': args.y,
-              'x2': node2.getAttribute('cx'), 'y2': node2.getAttribute('cy'),
-            });
-            pf.svg_vertices.appendChild(vertex);
-          });
-        });
-
-        //TODO Obsolete
-        this.bindFrame(null, 'pathfinding_path', (frame) => {
-          const nodes = frame.args.nodes;
-          const pf = this.pathfindings[frame.robot];
-          pf.svg.querySelectorAll('.active').forEach(o => { o.classList.remove('active') });
-          pf.svg_nodes.querySelectorAll('.start').forEach(o => { o.classList.remove('start') });
-          pf.svg_nodes.querySelectorAll('.goal').forEach(o => { o.classList.remove('goal') });
-          for(const [i, node1] of nodes.entries()) {
-            pf.svg_nodes.querySelector('.graph-node-'+node1).classList.add('active');
-            if(i > 0) {
-              const node2 = nodes[i-1];
-              pf.svg_vertices.querySelector(`.graph-vertex-${node1}.graph-vertex-${node2}`).classList.add('active');
-            }
-          }
-          pf.svg_nodes.querySelector('.graph-node-'+nodes[0]).classList.add('start');
-          pf.svg_nodes.querySelector('.graph-node-'+nodes[nodes.length-1]).classList.add('goal');
         });
 
         resolve();
@@ -128,6 +80,7 @@ Portlet.register('field', 'Field', class extends Portlet {
       });
       this.frame.appendChild(svg_carrot);
 
+      // Note: pathfinding not used anymore (for now)
       // create SVG pathfindings (prepare groups)
       const pathfinding = {
         svg: this.field.createElement('g'),
@@ -145,9 +98,13 @@ Portlet.register('field', 'Field', class extends Portlet {
   }
 
   updatePosition(frame) {
+    const svg_robot = this.svg_robots[frame.robot];
+    if (!svg_robot) {
+      return;
+    }
     const args = frame.args;
     const a = args.a * 180 / Math.PI;
-    this.svg_robots[frame.robot].setAttributes({
+    svg_robot.setAttributes({
       'transform': `translate(${args.x},${args.y}) rotate(${a})`,
     });
   }

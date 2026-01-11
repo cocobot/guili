@@ -452,6 +452,7 @@ class MouseMover {
 //   snap_margin -- snapping distance (default: none)
 //   min_w, min_h -- minimum size
 //   ratio -- preserve size ratio (default: false)
+//   on_resize() -- handler called, use `clientWidth`/`clientHeight` to retrieve new size
 //
 // Resizing is contained to the `offsetParent`.
 //
@@ -502,6 +503,7 @@ class MouseResizer {
     }
 
     // add the mousedown listeners
+    this.on_resize = options.on_resize;
     this.endResize(null);
   }
 
@@ -622,6 +624,10 @@ class MouseResizer {
     if(this.ratio || dir.y != 0) {
       this.el.style.top = (rect.y0 + this.cssOffset.y) + 'px';
       this.el.style.height = (rect.y1 - rect.y0 + this.cssOffset.h) + 'px';
+    }
+
+    if (this.on_resize) {
+      this.on_resize();
     }
 
     ev.stopPropagation();

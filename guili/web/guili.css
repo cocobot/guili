@@ -180,9 +180,9 @@ body {
   position: absolute;
   z-index: 5;
   top: -5px;
-  height: 7px;
+  height: 12px;
   right: -5px;
-  width: 7px;
+  width: 12px;
   cursor: ne-resize;
 }
 
@@ -190,9 +190,9 @@ body {
   position: absolute;
   z-index: 5;
   top: -5px;
-  height: 7px;
+  height: 12px;
   left: -5px;
-  width: 7px;
+  width: 12px;
   cursor: nw-resize;
 }
 
@@ -200,9 +200,9 @@ body {
   position: absolute;
   z-index: 5;
   bottom: -5px;
-  height: 7px;
+  height: 12px;
   right: -5px;
-  width: 7px;
+  width: 12px;
   cursor: se-resize;
 }
 
@@ -210,9 +210,9 @@ body {
   position: absolute;
   z-index: 5;
   bottom: -5px;
-  height: 7px;
+  height: 12px;
   left: -5px;
-  width: 7px;
+  width: 12px;
   cursor: sw-resize;
 }
 
@@ -404,7 +404,10 @@ div.portlet-logs-entry .log-tag {
 }
 
 
-.portlet-asserv-done {
-  color: green;
+table:not([data-robot-category=galipeur]) .portlet-asserv-galipeur {
+  display: none;
 }
 
+table:not([data-robot-category=pami]) .portlet-asserv-pami {
+  display: none;
+}

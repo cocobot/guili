@@ -5,7 +5,8 @@
     ["match"],
     ["field"],
     ["asserv"],
-    ["meca"]
+    ["meca"],
+    ["graph"]
   ],
   "monitoring": [
     ["console", {

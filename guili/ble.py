@@ -114,6 +114,7 @@ class BleCentral:
                         # Sometimes, services are not correctly retrieved and thus the device cannot be used
                         if not client.services.get_characteristic(CHAR_ROME_TELEMETRY_UUID):
                             logger.warn(f"Missing ROME characteristic on {device.address} {device.name!r}, abort connection")
+                            await client.disconnect()
                             continue
                         logger.info(f"Connected to {device.address} {device.name!r}")
                         self.clients[device.address] = client

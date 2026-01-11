@@ -341,7 +341,7 @@ class Portlet {
   async init(options) {
     const handle = this.node.querySelector('.portlet-header .fa-arrows-alt');
     this.mover = new MouseMover(this.node, { handle: handle, snap_on: 'div.portlet', snap_margin: 5 });
-    this.resize = null;
+    this.resizer = null;
     this.node.querySelector('.portlet-header .fa-times').addEventListener('click', (ev) => this.destroy());
   }
 
@@ -476,27 +476,29 @@ class Portlet {
     });
   }
 
-  // Add or update for robot selection
+  // Add or update "view menu" with custom items
   // The menu is stored as view_menu property.
-  // If null is found in robots, an "all" entry is added
-  setRobotViewMenu(robots, onselect) {
-    for(const el of this.header.querySelectorAll('.view-menu')) {
+  setViewMenu(items) {
+    for (const el of this.header.querySelectorAll('.view-menu')) {
       el.remmove();
     }
 
     const icon = createElementFromHtml('<i class="far fa-eye" />');
-    const menu = createClickMenu({
-      button: icon,
-      items: robots.map(robot => ({
-        node: robot === null ? createElementFromHtml('<span style="font-style: italic">all</span>') : robot,
-        onselect: () => onselect(robot),
-      })),
-    });
+    const menu = createClickMenu({ button: icon, items });
     menu.classList.add('portlet-header-menu');
-
     this.header.insertBefore(icon, this.header.firstChild);
     this.header.appendChild(menu);
     this.view_menu = menu;
+  }
+
+  // Add or update "view menu" for robot selection
+  // If null is found in robots, an "all" entry is added
+  setRobotViewMenu(robots, onselect) {
+    const items = robots.map(robot => ({
+      node: robot === null ? createElementFromHtml('<span style="font-style: italic">all</span>') : robot,
+      onselect: () => onselect(robot),
+    }));
+    this.setViewMenu(items);
   }
 
   // Load all portlet
@@ -729,7 +731,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // load portlets
   await Portlet.loadAll([
     'asserv', 'field', 'console', 'meca', 'logs', 'detection',
-    'match',
+    'match', 'graph',
   ]);
 
   // initialize timeline

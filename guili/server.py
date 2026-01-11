@@ -257,7 +257,14 @@ class TestGuiliServer(GuiliServer):
 
     class GuiliRequestHandlerClass(GuiliRequestHandler):
         def wsdo_rome(self, robot: str, name: str, args: rome.Arguments) -> None:
-            logger.debug("ROME[%s]: %s %r" % ('' if robot is None else robot, name, args))
+            logger.info("ROME[%s]: %s %r" % ('' if robot is None else robot, name, args))
+            # Attempt to encode the frame, for debug and tests
+            message = frame = rome.Message[name]
+            if isinstance(args, dict):
+                frame = message(**args)
+            else:
+                frame = message(*args)
+            frame.encode()
 
     def __init__(self, addr: tuple[str, int], robots: list[str]):
         super().__init__(addr, robots)
@@ -272,14 +279,17 @@ class TestGuiliServer(GuiliServer):
     def default_messages() -> list[rome.Message]:
         content = """
             90:
-              AsservTelemetry:
+              MatchTm:
+                team:
+                  - none
+                  - left
+                  - right
+                time_ms: u32
+              AsservTmStatus:
                 x: f32
                 y: f32
                 a: f32
-                done: bool
-              AsservTmCarrot:
-                x: f32
-                y: f32
+                idle: bool
               OrderDummy: [f32, u8]
         """
         return rome.load_messages(io.StringIO(content))
@@ -306,21 +316,11 @@ class TestGuiliServer(GuiliServer):
             return 2 * i * math.pi / N
 
         for i in itertools.cycle(range(N)):
-            #TODO Log
-            #if i == 0:
-            #    yield rome.Frame('log', 'notice', "%s: new turn" % robot)
-            #elif i == N//2:
-            #    yield rome.Frame('log', 'info', "%s: half turn" % robot)
-            # Asserv carrot
-            if i % (N//6) == 0:
-                a = angle((i + N//6) % N)
-                yield rome.Message["AsservTmCarrot"](x = r * math.cos(a), y = r * math.sin(a) + 1000)
-            # Asserv position
-            yield rome.Message["AsservTelemetry"](
+            yield rome.Message["AsservTmStatus"](
                 x = r * math.cos(angle(i)),
                 y = r * math.sin(angle(i)) + 1000,
-                a = math.pi*(2.0*i/N),
-                done = False,
+                a = math.pi*(2.0*i/N) - math.pi,
+                idle = False,
             )
             yield None
 

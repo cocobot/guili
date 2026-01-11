@@ -43,8 +43,16 @@ get_fontawesome() {
   rm -fr "$dl_dir/$name"
 }
 
+get_chart_js() {
+  echo "get charts.js $1"
+  download "https://cdn.jsdelivr.net/npm/chart.js@$1/dist/chart.umd.min.js" "chart.umd.min.js"
+  install "$dl_dir/chart.umd.min.js" js/
+  rm -fr "$dl_dir/chart.*.js"
+}
+
 
 rm -fr "$inst_dir"/*
 
 get_fontawesome 7.1.0
+get_chart_js 4.5.1
 
