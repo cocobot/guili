@@ -103,6 +103,17 @@ const gtimeline = new class {
     }
   }
 
+  // method called on a ROME log
+  onRomeLog(params) {
+    //XXX Handle logs as a special frame, to simplify (hacky, but simpler)
+    this.onFrame({
+      'robot': params.robot,
+      'name': 'romelog',
+      'level': params.level,
+      'message': params.message,
+    });
+  }
+
   // Internal method to set all playing parameters
   // If delay is null, is current position.
   // Note that speed will usually be instantly reset to 1 if changed near live,
@@ -225,6 +236,9 @@ const gs = new class {
     this.event_handler = {
       frame: (params) => {
         gtimeline.onFrame(params);
+      },
+      romelog: (params) => {
+        gtimeline.onRomeLog(params);
       },
       messages: (params) => {
         gevents.trigger('rome-messages', params.messages);

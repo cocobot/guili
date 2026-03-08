@@ -8,6 +8,7 @@ import shutil
 import threading
 import time
 import urllib
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from socketserver import ThreadingMixIn
 from typing import Any
@@ -22,6 +23,18 @@ WEB_FILES_PATH = Path(__file__).parent / "web"
 
 # No bootloader for now
 bootloader = None
+
+
+@dataclass
+class LogData:
+    time: float  # Time since boot
+    level: str  # Single character
+    message: str
+
+    @classmethod
+    def parse(cls, data: bytes):
+        time, level, message = data.decode("utf-8").split(" ", 2)
+        return cls(float(time), level, message)
 
 
 class GuiliRequestHandler(WebSocketRequestHandler):
@@ -246,6 +259,13 @@ class GuiliServer(ThreadingMixIn, WebSocketServer):
                 if not r.paused:
                     r.send_event('frame', data)
 
+    def on_log(self, robot: str, log: LogData):
+        data = {'robot': robot, 'time': log.time, 'level': log.level, 'message': log.message}
+        with self.lock:
+            for r in self.requests:
+                if not r.paused:
+                    r.send_event('romelog', data)
+
     def start(self):
         self.serve_forever()
 
@@ -341,4 +361,3 @@ class TickThread(threading.Thread):
         while True:
             self.callback(*self.args)
             time.sleep(self.dt)
-

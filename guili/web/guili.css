@@ -375,16 +375,16 @@ div.portlet-console-entry {
   background-color: #ffffd0;
 }
 
-.log-notice {
-  background-color: #e0e0ff;
-}
-
 .log-info {
   background-color: #e0ffff;
 }
 
 .log-debug {
   background-color: #f0f0f0;
+}
+
+.log-other {
+  background-color: #e0e0ff;
 }
 
 div.portlet-logs-entry {

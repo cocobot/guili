@@ -2,6 +2,14 @@
 Portlet.register('logs', 'Logs', class extends Portlet {
 
   async init(options) {
+    const SEVERITIES = {
+      'E': 'error',
+      'W': 'warning',
+      'I': 'info',
+      'D': 'debug',
+      '?': 'other',
+    };
+
     await super.init(options);
     this.robot = options.robot
     this.robot_tags = {'galipeur': 'G', 'galipette': 'g'}
@@ -14,7 +22,7 @@ Portlet.register('logs', 'Logs', class extends Portlet {
     this.backlog = this.content.querySelector('div.portlet-code');
     this.backlog_size = options.backlog_size ? options.backlog_size : 5000;
 
-    this.bindFrame(null, 'log', (frame) => {
+    this.bindFrame(null, 'romelog', (frame) => {
       if(this.robot && this.robot != frame.robot) {
         return;
       }
@@ -24,8 +32,9 @@ Portlet.register('logs', 'Logs', class extends Portlet {
       if(this.robot_tags[frame.robot]) {
         tag = '<span class="log-tag">' + this.robot_tags[frame.robot] + '</span>';
       }
-      entry.innerHTML = '<span class="log-date">'+str_date+'</span>'+tag+'<span class="log-msg">'+frame.args.msg+'</span>';
-      entry.classList.add('log-'+frame.args.sev);
+      entry.innerHTML = `<span class="log-date">${str_date}</span>${tag}<span class="log-msg">${frame.message}</span>`;
+      const severity = SEVERITIES[frame.level] || SEVERITIES['?'];
+      entry.classList.add(`log-${severity}`);
       this.backlog.appendChild(entry);
 
       while(this.backlog.childNodes.length > this.backlog_size) {

@@ -1,11 +1,12 @@
 import asyncio
+import bleak
 import queue
 import concurrent
 import logging
 import threading
 from bleak import BleakClient, BleakScanner
 from .rome_setup import rome
-from .server import GuiliRequestHandler, GuiliServer
+from .server import GuiliRequestHandler, GuiliServer, LogData
 
 logger = logging.getLogger("guili.ble")
 
@@ -13,6 +14,7 @@ logger = logging.getLogger("guili.ble")
 SERVICE_ROME_UUID = "81870000-ffa5-4969-9ab4-e777ca411f95"
 CHAR_ROME_TELEMETRY_UUID = "81870001-ffa5-4969-9ab4-e777ca411f95"
 CHAR_ROME_ORDERS_UUID = "81870002-ffa5-4969-9ab4-e777ca411f95"
+CHAR_ROME_LOGS_UUID = "81870003-ffa5-4969-9ab4-e777ca411f95"
 
 
 class BleCentral:
@@ -119,10 +121,19 @@ class BleCentral:
                         logger.info(f"Connected to {device.address} {device.name!r}")
                         self.clients[device.address] = client
                         self._update_server_robots()
-                        #TODO Set MTU?
+
                         async def telemetry_callback(_sender, data: bytes):
                             await self._on_rome_telemetry(client, data)
-                        await client.start_notify(CHAR_ROME_TELEMETRY_UUID, telemetry_callback)
+                        try:
+                            await client.start_notify(CHAR_ROME_TELEMETRY_UUID, telemetry_callback)
+                        except bleak.exc.BleakDBusError:
+                            pass  #XXX May fail with org.bluez.Error.NotPermitted even if it works
+                        async def rome_log_callback(_sender, data: bytes):
+                            await self._on_rome_log(client, data)
+                        try:
+                            await client.start_notify(CHAR_ROME_LOGS_UUID, rome_log_callback)
+                        except bleak.exc.BleakDBusError:
+                            pass  #XXX May fail with org.bluez.Error.NotPermitted even if it works
             except TimeoutError:
                 pass
         logger.info("End of scan")
@@ -150,6 +161,15 @@ class BleCentral:
             return
         logger.debug("ROME frame from %r: %s", client.name, frame)
         self.server.queue.put_nowait(("on_frame", client.name, frame))
+
+    async def _on_rome_log(self, client: BleakClient, data: bytes) -> None:
+        try:
+            log_data = LogData.parse(data)
+        except Exception as e:
+            logger.error(f"Invalid ROME log: {e}")
+            return
+        logger.debug("ROME log from %r: %s", client.name, log_data)
+        self.server.queue.put_nowait(("on_log", client.name, log_data))
 
     def _future_callback(self, future: concurrent.futures.Future) -> None:
         """Generic callback for futures, to report errors"""
