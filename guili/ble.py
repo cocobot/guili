@@ -17,6 +17,13 @@ CHAR_ROME_ORDERS_UUID = "81870002-ffa5-4969-9ab4-e777ca411f95"
 CHAR_ROME_LOGS_UUID = "81870003-ffa5-4969-9ab4-e777ca411f95"
 
 
+def normalize_device(s: str) -> str:
+    """Normalize addresses found, put them in uppercase"""
+    if s.count(":") == 5:
+        return s.upper()
+    return s
+
+
 class BleCentral:
     """
     Manage BLE clients, send envents on frame
@@ -28,7 +35,7 @@ class BleCentral:
     def __init__(self, server: "BleGuiliServer", devices: list[str] | None):
         self.server = server
         self.clients: dict[str, BleakClient] = {}
-        self.filtered_devices = devices
+        self.filtered_devices = None if devices is None else [normalize_device(s) for s in devices]
         self.loop = None
         self.scan_future = None
         self.thread = None
