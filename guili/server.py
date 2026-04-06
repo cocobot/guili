@@ -32,7 +32,7 @@ class LogData:
     message: str
 
     @classmethod
-    def parse(cls, data: bytes):
+    def parse(cls, data: bytes | bytearray):
         time, level, message = data.decode("utf-8").split(" ", 2)
         return cls(float(time), level, message)
 

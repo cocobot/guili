@@ -1,5 +1,4 @@
 import base64
-import io
 import hashlib
 import struct
 import sys
@@ -255,9 +254,9 @@ class WebSocketRequestHandler(BaseHTTPRequestHandler):
         if n > 2:
             reason = data[2:].decode('utf-8')
         else:
-            reason = None
+            reason = "(no reason)"
         # send reply
-        raise WebSocketCloseFrame(status, "close frame received")
+        raise WebSocketCloseFrame(status, f"close frame received: {reason}")
 
     def ws_process_ping_frame(self, data):
         self.ws_send_frame(0xA, data)

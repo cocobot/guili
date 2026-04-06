@@ -122,20 +122,20 @@ class BleCentral:
                         await client.connect()
                         # Sometimes, services are not correctly retrieved and thus the device cannot be used
                         if not client.services.get_characteristic(CHAR_ROME_TELEMETRY_UUID):
-                            logger.warn(f"Missing ROME characteristic on {device.address} {device.name!r}, abort connection")
+                            logger.warning(f"Missing ROME characteristic on {device.address} {device.name!r}, abort connection")
                             await client.disconnect()
                             continue
                         logger.info(f"Connected to {device.address} {device.name!r}")
                         self.clients[device.address] = client
                         self._update_server_robots()
 
-                        async def telemetry_callback(_sender, data: bytes):
+                        async def telemetry_callback(_sender, data: bytearray):
                             await self._on_rome_telemetry(client, data)
                         try:
                             await client.start_notify(CHAR_ROME_TELEMETRY_UUID, telemetry_callback)
                         except bleak.exc.BleakDBusError:
                             pass  #XXX May fail with org.bluez.Error.NotPermitted even if it works
-                        async def rome_log_callback(_sender, data: bytes):
+                        async def rome_log_callback(_sender, data: bytearray):
                             await self._on_rome_log(client, data)
                         try:
                             await client.start_notify(CHAR_ROME_LOGS_UUID, rome_log_callback)
@@ -147,20 +147,20 @@ class BleCentral:
 
     async def _do_send_frame(self, robot: str | None, frame: rome.Frame) -> None:
         data = frame.encode()
-        clients: list[BleakClient] = [self.clients.get(robot)] if robot is not None else self.clients.values()
+        clients: list[BleakClient] = [self.clients[robot]] if robot is not None else list(self.clients.values())
         promises = [c.write_gatt_char(CHAR_ROME_ORDERS_UUID, data) for c in clients if c]
         if not promises:
             return  # Nobody to send to
         await asyncio.gather(*promises)
 
     def _on_disconnected_client(self, client: BleakClient) -> None:
-        logger.warn(f"Client disconnected: {client.address} ({client.name!r})")
+        logger.warning(f"Client disconnected: {client.address} ({client.name!r})")
         if client.address not in self.clients:
             return  # May happen if client has not the required characteristics yet
         del self.clients[client.address]
         self._update_server_robots()
 
-    async def _on_rome_telemetry(self, client: BleakClient, data: bytes) -> None:
+    async def _on_rome_telemetry(self, client: BleakClient, data: bytearray) -> None:
         try:
             frame = rome.Message.decode(data)
         except Exception as e:
@@ -169,7 +169,7 @@ class BleCentral:
         logger.debug("ROME frame from %r: %s", client.name, frame)
         self.server.queue.put_nowait(("on_frame", client.name, frame))
 
-    async def _on_rome_log(self, client: BleakClient, data: bytes) -> None:
+    async def _on_rome_log(self, client: BleakClient, data: bytearray) -> None:
         try:
             log_data = LogData.parse(data)
         except Exception as e:
