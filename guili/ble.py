@@ -147,7 +147,7 @@ class BleCentral:
 
     async def _do_send_frame(self, robot: str | None, frame: rome.Frame) -> None:
         data = frame.encode()
-        clients: list[BleakClient] = [self.clients[robot]] if robot is not None else list(self.clients.values())
+        clients: list[BleakClient] = [client for client in self.clients.values() if robot is None or robot.lower() == client.name.lower()]
         promises = [c.write_gatt_char(CHAR_ROME_ORDERS_UUID, data) for c in clients if c]
         if not promises:
             return  # Nobody to send to
