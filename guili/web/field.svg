@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="drawing" viewBox="-1050 0 3100 2100">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="drawing" viewBox="-1550 0 3100 2100">
   <defs>
     <style type="text/css"><![CDATA[
       .default-robot { fill: #00ff00; }
@@ -81,10 +81,10 @@
     </g>
   </defs>
 
-  <g id="table" transform="translate(-1050,0)">
+  <g id="table" transform="translate(-1550,0)">
     <image x="50" y="50" width="3000" height="2000" href="field2026.svg" /> 
   </g>
-  <g id="reference-frame"/>
+  <g id="reference-frame" transform="translate(0, 2100) scale(1,-1)" />
 
   <script type="text/javascript"><![CDATA[
     const xlinkNS = "http://www.w3.org/1999/xlink";
