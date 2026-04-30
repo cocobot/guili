@@ -38,7 +38,7 @@ Portlet.register('field', 'Field', class extends Portlet {
           gevents.trigger('field-point-xy', pos.x, pos.y);
         });
 
-        this.bindFrame(null, 'AsservTmPosition', this.updatePosition);
+        this.bindFrame(null, 'AsservTmStatus', this.updatePosition);
         this.bindFrame(null, 'AsservHoloTmStatus', (frame) => {
           const carrot = this.svg_carrots[frame.robot];
           if (carrot) {
