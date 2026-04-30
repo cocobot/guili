@@ -287,6 +287,7 @@ class TestGuiliServer(GuiliServer):
             frame.encode()
 
     def __init__(self, addr: tuple[str, int], robots: list[str]):
+        robots = ['galipeur']  # Use a robot with binded frames
         super().__init__(addr, robots)
         # Define only our messages
         rome.register_messages(self.default_messages(), append=False)
