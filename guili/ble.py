@@ -76,7 +76,7 @@ class BleCentral:
             logger.exception("Central loop failed")
             raise
 
-    def scan(self, delay: float):
+    def scan(self, delay: float | None):
         """Scan for devices for a given duration, thread safe"""
 
         if self.loop is None:
@@ -104,7 +104,7 @@ class BleCentral:
         else:
             return device.name in self.filtered_devices or device.address in self.filtered_devices
 
-    async def _do_scan(self, delay: float):
+    async def _do_scan(self, delay: float | None):
         """Start a scan, connect to known devices"""
 
         logger.info(f"Start scan ({delay}s)")
@@ -208,7 +208,7 @@ class BleGuiliServer(GuiliServer):
 
         def wsdo_scan(self) -> None:
             """Start a scan"""
-            self.server.central.scan(30)
+            self.server.central.scan(None)
 
     def __init__(self, addr: tuple[str, int], devices: list[str]):
         super().__init__(addr, [])
@@ -221,9 +221,7 @@ class BleGuiliServer(GuiliServer):
         self.central.start()
         _queue_thread = threading.Thread(target=self._consume_queue, daemon=True)
         _queue_thread.start()
-        #TODO Add a button in UI to start a scan
-        #TODO At startup, scan until at least one robot is found
-        self.central.scan(60)
+        self.central.scan(None)
         super().start()
 
         # Note: threads are never collected/stopped properly
