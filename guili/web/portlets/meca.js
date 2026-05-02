@@ -12,7 +12,7 @@ Portlet.register('meca', 'Meca', class extends Portlet {
     for (let side = 0; side < SIDES.length; ++side) {
       let buttons = trs[side * ROWS + 4].querySelectorAll('button');
       for (let order = 0; order < ORDERS.length; ++order) {
-        buttons[order].onclick = () => gs.sendRomeFrame('galipeur', ORDERS[order], side);
+        buttons[order].onclick = () => gs.sendRomeFrame('galipeur', ORDERS[order], { side: SIDES[side] });
       }
     }
 
