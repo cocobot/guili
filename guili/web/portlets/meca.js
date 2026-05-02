@@ -4,35 +4,59 @@ Portlet.register('meca', 'Meca', class extends Portlet {
   async init(options) {
     await super.init(options);
 
-    const trs = this.content.querySelectorAll('tr');
-    const ROWS = 5;  // Rows per side
+    const SIDE_NAMES = ['left', 'right', 'back'];
 
-    const SIDES = ['left', 'right', 'back'];
-    const ORDERS = ['MecaPrepareTake', 'MecaTake', 'MecaPrepareRelease', 'MecaRelease'];
-    for (let side = 0; side < SIDES.length; ++side) {
-      let buttons = trs[side * ROWS + 4].querySelectorAll('button');
-      for (let order = 0; order < ORDERS.length; ++order) {
-        buttons[order].onclick = () => gs.sendRomeFrame('galipeur', ORDERS[order], { side: SIDES[side] });
+    const trs = this.content.querySelectorAll('tr');
+    const elements = [];
+    for (let side = 0; side < 3; ++side) {
+      const index = side * 5;
+      const positionTds = trs[index].querySelectorAll('td');
+      const actuatorTds = trs[index + 1].querySelectorAll('td');
+      const moveTds = trs[index + 2].querySelectorAll('td');
+      const colorTds = trs[index + 3].querySelectorAll('td');
+      const buttons = trs[index + 4].querySelectorAll('button');
+
+      const arms = [];
+      for (let arm = 0; arm < 3; ++arm) {
+        arms.push({
+          positionText: positionTds[arm],
+          actuatorText: actuatorTds[arm],
+          moveIcon: moveTds[arm].firstChild,
+          colorIcon: colorTds[arm].firstChild,
+        });
+      }
+
+      elements.push({
+        arms,
+        modulePositionText: trs[index].querySelector('th'),
+        buttons: {
+          'MecaPrepareTake': buttons[0],
+          'MecaTake': buttons[1],
+          'MecaPrepareRelease': buttons[2],
+          'MecaRelease': buttons[3],
+        },
+      })
+    }
+
+    for (let side of elements) {
+      for (const order in side.buttons) {
+        side.buttons[order].onclick = () => gs.sendRomeFrame('galipeur', order, { side: SIDE_NAMES[side] });
       }
     }
 
     this.bindFrame(null, 'MecaTmArmFullState', (frame) => {
       const args = frame.args;
-
-      trs[args.side * ROWS].querySelectorAll('td')[args.arm].textContent = args.position.toFixedHtml(0);
-      trs[args.side * ROWS + 1].querySelectorAll('td')[args.arm].textContent = (args.pump ? "P" : "-") + (args.valve ? "V" : "-");
-
-      let td_move = trs[args.side * ROWS + 2].querySelectorAll('td')[args.arm];
-      td_move.firstChild.style.color = args.servo_error ? 'red' : 'black';
-      td_move.firstChild.className = args.moving ? 'fa fa-circle-check' : 'fa fa-circle-play';
-
-      let td_color = trs[args.side * ROWS + 3].querySelectorAll('td')[args.arm];
-      td_color.firstChild.style.color = (args.color == 'yellow' || args.color == 'blue') ? args.color : 'grey';
+      const arm = elements[args.side].arms[args.arm];
+      arm.positionText.textContent = args.position.toFixedHtml(0);
+      arm.actuatorText.textContent = (args.pump ? "P" : "-") + (args.valve ? "V" : "-");
+      arm.moveIcon.style.color = args.servo_error ? 'red' : 'black';
+      arm.moveIcon.className = args.moving ? 'fa fa-circle-check' : 'fa fa-circle-play';
+      arm.colorIcon.style.color = (args.color == 'yellow' || args.color == 'blue') ? args.color : 'grey';
     });
 
     this.bindFrame(null, 'MecaTmSideTranslation', (frame) => {
       const args = frame.args;
-      trs[args.side * ROWS].querySelector('th').textContent = args.position.toFixedHtml(0);
+      elements[args.side].modulePositionText.textContent = args.position.toFixedHtml(0);
     });
   }
 });
