@@ -5,7 +5,7 @@ Portlet.register('meca', 'Meca', class extends Portlet {
     await super.init(options);
 
     const trs = this.content.querySelectorAll('tr');
-    const ROWS = 5;  // Rows per module/side
+    const ROWS = 5;  // Rows per side
 
     const SIDES = ['left', 'right', 'back'];
     const ORDERS = ['MecaPrepareTake', 'MecaTake', 'MecaPrepareRelease', 'MecaRelease'];
@@ -16,23 +16,23 @@ Portlet.register('meca', 'Meca', class extends Portlet {
       }
     }
 
-    this.bindFrame(null, 'MecaArmTmState', (frame) => {
+    this.bindFrame(null, 'MecaTmArmFullState', (frame) => {
       const args = frame.args;
 
-      trs[args.module * ROWS].querySelectorAll('td')[args.arm].textContent = args.position.toFixedHtml(0);
-      trs[args.module * ROWS + 1].querySelectorAll('td')[args.arm].textContent = (args.pump ? "P" : "-") + (args.valve ? "V" : "-");
+      trs[args.side * ROWS].querySelectorAll('td')[args.arm].textContent = args.position.toFixedHtml(0);
+      trs[args.side * ROWS + 1].querySelectorAll('td')[args.arm].textContent = (args.pump ? "P" : "-") + (args.valve ? "V" : "-");
 
-      let td_move = trs[args.module * ROWS + 2].querySelectorAll('td')[args.arm];
+      let td_move = trs[args.side * ROWS + 2].querySelectorAll('td')[args.arm];
       td_move.firstChild.style.color = args.servo_error ? 'red' : 'black';
       td_move.firstChild.className = args.moving ? 'fa fa-circle-check' : 'fa fa-circle-play';
 
-      let td_color = trs[args.module * ROWS + 3].querySelectorAll('td')[args.arm];
+      let td_color = trs[args.side * ROWS + 3].querySelectorAll('td')[args.arm];
       td_color.firstChild.style.color = (args.color == 'yellow' || args.color == 'blue') ? args.color : 'grey';
     });
 
-    this.bindFrame(null, 'MecaArmTmTranslation', (frame) => {
+    this.bindFrame(null, 'MecaTmSideTranslation', (frame) => {
       const args = frame.args;
-      trs[args.module * ROWS].querySelector('th').textContent = args.position.toFixedHtml(0);
+      trs[args.side * ROWS].querySelector('th').textContent = args.position.toFixedHtml(0);
     });
   }
 });
